@@ -1,0 +1,42 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: core-service
+  profiles:
+    active: dev
+
+# JWT Configuration (for token validation)
+jwt:
+  secret: ${JWT_SECRET:finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+
+# RabbitMQ
+spring.rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USER:guest}
+  password: ${RABBITMQ_PASSWORD:guest}
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Logging
+logging:
+  level:
+    com.finpred.core: DEBUG
+    org.springframework.security: INFO
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

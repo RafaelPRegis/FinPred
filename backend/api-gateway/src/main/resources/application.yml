@@ -1,0 +1,88 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: dev
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        # Auth Service
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        # Core Service
+        - id: core-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/core/**
+          filters:
+            - StripPrefix=0
+
+        # Prediction Service
+        - id: prediction-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/predict/**
+          filters:
+            - StripPrefix=0
+
+        # Swagger UI - Auth
+        - id: auth-swagger
+          uri: http://localhost:8081
+          predicates:
+            - Path=/auth/swagger-ui/**,/auth/v3/api-docs/**
+
+        # Swagger UI - Core
+        - id: core-swagger
+          uri: http://localhost:8082
+          predicates:
+            - Path=/core/swagger-ui/**,/core/v3/api-docs/**
+
+        # Swagger UI - Prediction
+        - id: prediction-swagger
+          uri: http://localhost:8083
+          predicates:
+            - Path=/prediction/swagger-ui/**,/prediction/v3/api-docs/**
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.finpred.gateway: DEBUG
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

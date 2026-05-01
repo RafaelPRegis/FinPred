@@ -1,0 +1,47 @@
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# Maven Wrapper
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ===== Spring Boot =====
+*.pid
+application-local.yml
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Segredos =====
+.env
+*.pem
+*.key
+
+# ===== Docker =====
+docker-compose.override.yml
