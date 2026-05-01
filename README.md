@@ -19,4 +19,3 @@ Infraestrutura
 
 Arquivos para subir o projeto de forma simples: 
 - start_services.ps1 para subir todos os serviços
-
