@@ -14,6 +14,7 @@ import { DashboardPage, initDashboardPage } from './pages/DashboardPage.js';
 import { ProductsPage, initProductsPage } from './pages/ProductsPage.js';
 import { CashflowPage, initCashflowPage } from './pages/CashflowPage.js';
 import { SimulatorPage, initSimulatorPage } from './pages/SimulatorPage.js';
+import { FeedbackPage, initFeedbackPage } from './pages/FeedbackPage.js';
 import { ImportPage, initImportPage } from './pages/ImportPage.js';
 import { ReportsPage } from './pages/ReportsPage.js';
 import { TaxesPage, initTaxesPage } from './pages/TaxesPage.js';
@@ -26,7 +27,7 @@ import './components/Modal.js';
 const PUBLIC_ROUTES = ['/', '/register', '/register/complete'];
 
 /** Rotas que exigem autenticação */
-const PROTECTED_ROUTES = ['/dashboard', '/products', '/cashflow', '/taxes', '/acquirers', '/simulator', '/import', '/reports', '/profile'];
+const PROTECTED_ROUTES = ['/dashboard', '/products', '/cashflow', '/taxes', '/acquirers', '/simulator', '/feedback', '/import', '/reports', '/profile'];
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .route('/taxes', () => guardRoute(() => TaxesPage()))
         .route('/acquirers', () => guardRoute(() => AcquirersPage()))
         .route('/simulator', () => guardRoute(() => SimulatorPage()))
+        .route('/feedback', () => guardRoute(() => FeedbackPage()))
         .route('/import', () => guardRoute(() => ImportPage()))
         .route('/reports', () => guardRoute(() => ReportsPage()))
         .route('/profile', () => guardRoute(() => ProfilePage()));
@@ -92,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case '/simulator':
                     initSimulatorPage();
+                    break;
+                case '/feedback':
+                    initFeedbackPage();
                     break;
                 case '/profile':
                     initProfilePage();

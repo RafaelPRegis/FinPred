@@ -1,9 +1,13 @@
 /**
- * DashboardPage — Página principal com novos KPIs e Gráficos Preditivos.
+ * DashboardPage — Página principal com KPIs, Gráficos e Alertas Inteligentes.
  */
 import { renderSidebar } from '../components/Sidebar.js';
 import { formatCurrency } from '../utils/currency.js';
 import { api } from '../api/client.js';
+import { alertsApi } from '../api/alerts.js';
+import { feedbackApi } from '../api/feedback.js';
+import { renderAlertList, initAlertDismiss } from '../components/AlertCard.js';
+import { renderMAPEBadgeInline } from '../components/MAPEBadge.js';
 
 export function DashboardPage() {
     return `
@@ -16,7 +20,10 @@ export function DashboardPage() {
             <div class="dashboard-grid stagger-children" id="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: var(--space-6);">
                 
                 <div class="card kpi-card fade-in-up" style="padding: var(--space-5);">
-                    <span class="kpi-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">Faturamento Previsto</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="kpi-label" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">Faturamento Previsto</span>
+                        <span id="kpi-mape-badge"></span>
+                    </div>
                     <div class="kpi-value money" id="kpi-revenue" style="color: var(--accent-info); font-size: 2rem; margin: var(--space-2) 0;">R$ 0,00</div>
                     <div class="kpi-change positive" style="font-size: 0.75rem;">
                         <i class="fas fa-arrow-up right"></i> <span id="kpi-revenue-sub">Mantenha dados para análise</span>
@@ -68,24 +75,86 @@ export function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            <!-- Alertas Inteligentes -->
+            <div class="dashboard-alerts-section fade-in-up" style="margin-top: var(--space-6);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                    <h3 style="font-size: 1.1rem; font-weight: 500; color: var(--text-primary);">
+                        <i class="fas fa-bell" style="color: var(--accent-warning); margin-right: var(--space-2);"></i>
+                        Alertas Inteligentes
+                    </h3>
+                    <span id="alerts-count" class="badge" style="font-size: 0.75rem;"></span>
+                </div>
+                <div class="alerts-grid" id="alerts-container">
+                    <div class="loading-placeholder" style="padding: var(--space-4); text-align: center; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Analisando seus dados financeiros...
+                    </div>
+                </div>
+            </div>
         </main>
     `;
 }
 
 export async function initDashboardPage() {
     try {
-        const data = await api.get('/core/dashboard');
-        renderKPIs(data);
-        renderCharts(data);
-        
-        // Atualiza o insight do dia na sidebar
-        const insightEl = document.getElementById('sidebar-insight-text');
-        if (insightEl && data.dailyInsight) {
-            insightEl.textContent = data.dailyInsight;
-            sessionStorage.setItem('dailyInsight', data.dailyInsight);
+        // Carregar tudo em paralelo
+        const [data, alerts, accuracy] = await Promise.all([
+            api.get('/core/dashboard').catch(() => null),
+            alertsApi.getAlerts().catch(() => []),
+            feedbackApi.getAccuracy().catch(() => null)
+        ]);
+
+        if (data) {
+            renderKPIs(data);
+            renderCharts(data);
+
+            // Atualiza o insight do dia na sidebar
+            const insightEl = document.getElementById('sidebar-insight-text');
+            if (insightEl && data.dailyInsight) {
+                insightEl.textContent = data.dailyInsight;
+                sessionStorage.setItem('dailyInsight', data.dailyInsight);
+            }
+        }
+
+        // Renderizar alertas inteligentes
+        renderAlerts(alerts);
+
+        // Renderizar badge de MAPE no KPI
+        if (accuracy) {
+            const badgeEl = document.getElementById('kpi-mape-badge');
+            if (badgeEl) {
+                badgeEl.innerHTML = renderMAPEBadgeInline(accuracy);
+            }
         }
     } catch (error) {
         console.warn('Dashboard sem dados ou erro de API:', error.message);
+    }
+}
+
+/**
+ * Renderiza alertas inteligentes no dashboard.
+ */
+function renderAlerts(alerts) {
+    const container = document.getElementById('alerts-container');
+    const countEl = document.getElementById('alerts-count');
+    if (!container) return;
+
+    container.innerHTML = renderAlertList(alerts);
+    initAlertDismiss(container);
+
+    if (countEl && alerts && alerts.length > 0) {
+        const dangerCount = alerts.filter(a => a.type === 'danger').length;
+        const warningCount = alerts.filter(a => a.type === 'warning').length;
+        if (dangerCount > 0) {
+            countEl.textContent = `${dangerCount} crítico${dangerCount > 1 ? 's' : ''}`;
+            countEl.style.color = 'var(--color-danger, #ff1744)';
+        } else if (warningCount > 0) {
+            countEl.textContent = `${warningCount} atenção`;
+            countEl.style.color = 'var(--color-warning, #ffab00)';
+        } else {
+            countEl.textContent = `${alerts.length} alerta${alerts.length > 1 ? 's' : ''}`;
+            countEl.style.color = 'var(--color-success, #00c853)';
+        }
     }
 }
 

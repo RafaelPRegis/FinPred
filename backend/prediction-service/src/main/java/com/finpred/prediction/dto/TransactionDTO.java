@@ -18,4 +18,5 @@ public class TransactionDTO {
     private String type; // REVENUE, FIXED_COST, VARIABLE_COST
     private BigDecimal amount;
     private LocalDate date;
+    private Long productId;
 }

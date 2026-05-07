@@ -7,8 +7,6 @@ Contem 4 microsserviços
 - Prediction Service
 
 Conexão API do Back ao Front
-- Frontend
-
 
 Infraestrutura
 - Java 21+

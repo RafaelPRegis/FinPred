@@ -6,6 +6,7 @@ export function renderSidebar(activeRoute = '/dashboard') {
         { path: '/taxes', icon: 'fas fa-calculator', label: 'Calculadora IR' },
         { path: '/acquirers', icon: 'fas fa-credit-card', label: 'Maquininhas' },
         { path: '/simulator', icon: 'fas fa-magic', label: 'Simulador' },
+        { path: '/feedback', icon: 'fas fa-bullseye', label: 'Feedback' },
         { path: '/import', icon: 'fas fa-file-upload', label: 'Importação' },
         { path: '/reports', icon: 'fas fa-chart-bar', label: 'Relatórios' },
     ];
