@@ -55,12 +55,17 @@ public class PredictionEngineService {
      * Simulação paramétrica — entrada direta do usuário (sliders).
      * Este é o fluxo original do SimulatorPage.
      */
-    public SimulationResponse simulate(SimulationRequest request) {
-        log.info("Processando simulação paramétrica: {}", request);
+    public SimulationResponse simulate(Long userId, SimulationRequest request) {
+        log.info("Processando simulação paramétrica: {} para o user {}", request, userId);
 
-        ScenarioResult neutral = generateScenario(request, "NEUTRAL", BigDecimal.valueOf(1.0));
-        ScenarioResult optimist = generateScenario(request, "OPTIMIST", BigDecimal.valueOf(1.15));
-        ScenarioResult pessimist = generateScenario(request, "PESSIMIST", BigDecimal.valueOf(0.85));
+        BigDecimal correctionFactor = BigDecimal.ONE;
+        if (userId != null) {
+            correctionFactor = feedbackService.getCurrentCorrectionFactor(userId);
+        }
+
+        ScenarioResult neutral = generateScenario(request, "NEUTRAL", BigDecimal.valueOf(1.0), correctionFactor);
+        ScenarioResult optimist = generateScenario(request, "OPTIMIST", BigDecimal.valueOf(1.15), correctionFactor);
+        ScenarioResult pessimist = generateScenario(request, "PESSIMIST", BigDecimal.valueOf(0.85), correctionFactor);
 
         return SimulationResponse.builder()
                 .neutral(neutral)
@@ -69,7 +74,7 @@ public class PredictionEngineService {
                 .build();
     }
 
-    private ScenarioResult generateScenario(SimulationRequest request, String name, BigDecimal scenarioMultiplier) {
+    private ScenarioResult generateScenario(SimulationRequest request, String name, BigDecimal scenarioMultiplier, BigDecimal correctionFactor) {
         List<MonthlyProjection> projections = new ArrayList<>();
         LocalDate currentDate = LocalDate.now();
         BigDecimal totalProfit = BigDecimal.ZERO;
@@ -100,7 +105,8 @@ public class PredictionEngineService {
             BigDecimal projectedVolumeDecimal = currentVolume
                     .multiply(monthlyGrowthMultiplier.pow(i))
                     .multiply(seasonalMultiplier)
-                    .multiply(scenarioMultiplier);
+                    .multiply(scenarioMultiplier)
+                    .multiply(correctionFactor);
 
             int projectedVolume = projectedVolumeDecimal.intValue();
 
@@ -171,14 +177,9 @@ public class PredictionEngineService {
         log.info("Série temporal construída: {} meses de dados", monthlyRevenue.length);
 
         // 2. Selecionar e executar o melhor modelo
-        ForecastResult forecastResult;
-        if (monthlyRevenue.length >= MIN_MONTHS_FOR_ML) {
-            forecastResult = modelSelectorService.selectBestModel(monthlyRevenue, horizon);
-        } else {
-            log.info("Dados insuficientes para ML ({} < {}). Usando regressão linear básica.",
-                    monthlyRevenue.length, MIN_MONTHS_FOR_ML);
-            forecastResult = modelSelectorService.selectBestModel(monthlyRevenue, horizon);
-        }
+        // O ModelSelectorService decide internamente qual algoritmo usar
+        // baseado na quantidade de dados disponíveis (6+ meses → ARMA, 24+ → Holt-Winters)
+        ForecastResult forecastResult = modelSelectorService.selectBestModel(monthlyRevenue, horizon);
 
         // 3. Aplicar fator de correção do feedback
         BigDecimal correctionFactor = feedbackService.getCurrentCorrectionFactor(userId);

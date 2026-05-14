@@ -23,10 +23,10 @@ public class MockCoreServiceClient implements CoreServiceClient {
         List<TransactionDTO> transactions = new ArrayList<>();
         Random random = new Random(userId); // seed fixa por user
         
-        // Gerar 12 meses de histórico fake
-        LocalDate startDate = LocalDate.now().minusMonths(12);
+        // Gerar 24 meses de histórico fake (necessário para Holt-Winters)
+        LocalDate startDate = LocalDate.now().minusMonths(24);
         
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 24; i++) {
             LocalDate currentMonth = startDate.plusMonths(i);
             
             // Tendência de crescimento (base 10000 + 500 por mês)

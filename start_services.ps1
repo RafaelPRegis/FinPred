@@ -25,7 +25,8 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-26"
 try {
     $javaVersion = java --version 2>&1 | Select-Object -First 1
     Write-Host "[OK] Java: $javaVersion" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "[ERRO] Java nao encontrado no PATH!" -ForegroundColor Red
     exit 1
 }
@@ -34,7 +35,8 @@ try {
 try {
     $nodeVersion = node --version 2>&1
     Write-Host "[OK] Node: $nodeVersion" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "[ERRO] Node.js nao encontrado no PATH!" -ForegroundColor Red
     exit 1
 }
@@ -45,9 +47,9 @@ Write-Host ""
 
 # Definir servicos
 $services = @(
-    @{ Name = "API Gateway";        Port = 8080; Path = "backend\api-gateway" },
-    @{ Name = "Auth Service";       Port = 8081; Path = "backend\auth-service" },
-    @{ Name = "Core Service";       Port = 8082; Path = "backend\core-service" },
+    @{ Name = "API Gateway"; Port = 8080; Path = "backend\api-gateway" },
+    @{ Name = "Auth Service"; Port = 8081; Path = "backend\auth-service" },
+    @{ Name = "Core Service"; Port = 8082; Path = "backend\core-service" },
     @{ Name = "Prediction Service"; Port = 8083; Path = "backend\prediction-service" }
 )
 
@@ -116,7 +118,8 @@ foreach ($job in $jobs) {
             Get-Process | Where-Object { $_.Parent.Id -eq $job.Process.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
             Write-Host "  [x] $($job.Name) encerrado" -ForegroundColor Red
         }
-    } catch {
+    }
+    catch {
         Write-Host "  [!] Erro ao encerrar $($job.Name)" -ForegroundColor Yellow
     }
 }

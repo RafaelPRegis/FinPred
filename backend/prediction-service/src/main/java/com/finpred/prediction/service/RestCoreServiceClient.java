@@ -3,6 +3,7 @@ package com.finpred.prediction.service;
 import com.finpred.prediction.dto.TransactionDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -21,26 +22,28 @@ import java.util.List;
 public class RestCoreServiceClient implements CoreServiceClient {
 
     private final RestTemplate restTemplate;
-    
-    // No Docker Compose, os serviços se comunicam pelo nome do container
-    private final String coreServiceUrl = "http://core-service:8082/api/core/transactions";
+
+    @Value("${finpred.core-service.url:http://localhost:8082}")
+    private String coreServiceBaseUrl;
 
     @Override
     public List<TransactionDTO> getUserTransactions(Long userId, String token) {
-        log.info("Usando RestCoreServiceClient (Perfil PROD) para buscar transações do usuário {}", userId);
+        String url = coreServiceBaseUrl + "/api/core/transactions";
+        log.info("Usando RestCoreServiceClient (Perfil PROD) para buscar transações do usuário {} em {}", userId, url);
         
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", token);
+        headers.set("X-User-Id", String.valueOf(userId));
         
         HttpEntity<String> entity = new HttpEntity<>(headers);
         
         ResponseEntity<List<TransactionDTO>> response = restTemplate.exchange(
-                coreServiceUrl,
+                url,
                 HttpMethod.GET,
                 entity,
                 new ParameterizedTypeReference<List<TransactionDTO>>() {}
         );
         
-        return response.getBody();
+        return response.getBody() != null ? response.getBody() : List.of();
     }
 }

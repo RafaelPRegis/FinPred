@@ -88,8 +88,17 @@ export function FeedbackPage() {
                     <!-- Gráfico Previsto vs Realizado -->
                     <div class="card feedback-chart-card">
                         <h3><i class="fas fa-chart-area"></i> Previsto vs Realizado</h3>
-                        <div class="chart-container" id="feedback-chart-container">
+                        <div class="chart-container" style="position: relative; height: 300px; width: 100%;">
                             <canvas id="feedback-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico Evolução do MAPE -->
+                    <div class="card feedback-chart-card">
+                        <h3><i class="fas fa-chart-line"></i> Evolução da Precisão do Modelo</h3>
+                        <p style="color: var(--text-secondary, #94a3b8); font-size: 0.85rem; margin-bottom: 1rem;">Acompanhe como a precisão do modelo melhora conforme você fornece mais feedbacks.</p>
+                        <div class="chart-container" style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="mape-evolution-chart"></canvas>
                         </div>
                     </div>
 
@@ -225,8 +234,9 @@ async function loadHistory() {
             `;
         }).join('');
 
-        // Renderizar gráfico
+        // Renderizar gráficos
         renderFeedbackChart(history);
+        renderMAPEEvolutionChart(history);
     } catch (err) {
         console.error('Erro ao carregar histórico:', err);
         tbody.innerHTML = `
@@ -392,12 +402,173 @@ function renderFeedbackChart(history) {
                 y: {
                     ticks: {
                         color: '#78909c',
-                        callback: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k'
+                        callback: function(value) {
+                            if (Math.abs(value) >= 1000000) {
+                                return 'R$ ' + (value / 1000000).toFixed(1).replace('.0', '') + 'M';
+                            } else if (Math.abs(value) >= 1000) {
+                                return 'R$ ' + (value / 1000).toFixed(1).replace('.0', '') + 'k';
+                            } else {
+                                return 'R$ ' + value;
+                            }
+                        }
                     },
                     grid: { color: 'rgba(255,255,255,0.04)' }
                 }
             }
         }
+    });
+}
+
+/**
+ * Renderiza gráfico de evolução do MAPE ao longo do tempo.
+ * Mostra como a precisão do modelo melhora conforme mais feedbacks são fornecidos.
+ */
+function renderMAPEEvolutionChart(history) {
+    const canvas = document.getElementById('mape-evolution-chart');
+    if (!canvas || !window.Chart) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Ordenar cronologicamente e filtrar com MAPE válido
+    const sorted = [...history]
+        .filter(f => f.mapeScore != null)
+        .sort((a, b) => (a.month || '').localeCompare(b.month || ''));
+
+    if (sorted.length < 2) {
+        // Sem dados suficientes para mostrar evolução
+        const container = canvas.parentElement;
+        if (container) {
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-secondary, #94a3b8); font-size: 0.9rem;">
+                    <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                    Submeta ao menos 2 feedbacks para visualizar a evolução.
+                </div>
+            `;
+        }
+        return;
+    }
+
+    const labels = sorted.map((f, i) => `Feedback ${i + 1}`);
+    const mapeValues = sorted.map(f => parseFloat(f.mapeScore) || 0);
+    const confidenceValues = mapeValues.map(m => Math.max(0, Math.min(100, 100 - m)));
+
+    // Destruir gráfico anterior se existir
+    if (window._mapeEvolutionChart) {
+        window._mapeEvolutionChart.destroy();
+    }
+
+    // Determinar cor do gradiente baseada no último MAPE
+    const lastMape = mapeValues[mapeValues.length - 1];
+    let lineColor, bgColor;
+    if (lastMape < 10) {
+        lineColor = '#00c853'; bgColor = 'rgba(0, 200, 83, 0.15)';
+    } else if (lastMape < 20) {
+        lineColor = '#64dd17'; bgColor = 'rgba(100, 221, 23, 0.15)';
+    } else if (lastMape < 50) {
+        lineColor = '#ffab00'; bgColor = 'rgba(255, 171, 0, 0.15)';
+    } else {
+        lineColor = '#ff1744'; bgColor = 'rgba(255, 23, 68, 0.15)';
+    }
+
+    window._mapeEvolutionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'MAPE (%)',
+                    data: mapeValues,
+                    borderColor: lineColor,
+                    backgroundColor: bgColor,
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: lineColor,
+                    pointBorderColor: 'rgba(15, 23, 42, 0.8)',
+                    pointBorderWidth: 2,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Confiança (%)',
+                    data: confidenceValues,
+                    borderColor: '#7c4dff',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#7c4dff',
+                    yAxisID: 'y'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#b0bec5', font: { family: "'Inter', sans-serif" } }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(20, 20, 35, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#b0bec5',
+                    borderColor: 'rgba(124, 77, 255, 0.3)',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.parsed.y.toFixed(1);
+                            return `${ctx.dataset.label}: ${val}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#78909c' },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        color: '#78909c',
+                        stepSize: 20,
+                        callback: (v) => v + '%'
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                }
+            }
+        },
+        plugins: [{
+            id: 'horizontalLinePlugin',
+            afterDraw: function(chart) {
+                const yAxis = chart.scales.y;
+                const xAxis = chart.scales.x;
+                const yValue = 10;
+                
+                if (yValue >= yAxis.min && yValue <= yAxis.max) {
+                    const yPixel = yAxis.getPixelForValue(yValue);
+                    const ctx = chart.ctx;
+                    
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.moveTo(xAxis.left, yPixel);
+                    ctx.lineTo(xAxis.right, yPixel);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(0, 200, 83, 0.8)';
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(0, 200, 83, 0.9)';
+                    ctx.font = "11px 'Inter', sans-serif";
+                    ctx.fillText("Alvo (10%)", xAxis.right - 65, yPixel - 5);
+                    ctx.restore();
+                }
+            }
+        }]
     });
 }
 

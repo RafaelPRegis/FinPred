@@ -16,7 +16,7 @@ import { CashflowPage, initCashflowPage } from './pages/CashflowPage.js';
 import { SimulatorPage, initSimulatorPage } from './pages/SimulatorPage.js';
 import { FeedbackPage, initFeedbackPage } from './pages/FeedbackPage.js';
 import { ImportPage, initImportPage } from './pages/ImportPage.js';
-import { ReportsPage } from './pages/ReportsPage.js';
+import { ReportsPage, initReportsPage } from './pages/ReportsPage.js';
 import { TaxesPage, initTaxesPage } from './pages/TaxesPage.js';
 import { AcquirersPage, initAcquirersPage } from './pages/AcquirersPage.js';
 import { ProfilePage, initProfilePage } from './pages/ProfilePage.js';
@@ -97,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case '/feedback':
                     initFeedbackPage();
+                    break;
+                case '/reports':
+                    initReportsPage();
                     break;
                 case '/profile':
                     initProfilePage();

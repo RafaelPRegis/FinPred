@@ -118,7 +118,18 @@ export function SimulatorPage() {
 
             <!-- GRÁFICO 12 MESES -->
             <div class="card fade-in-up" style="animation-delay: 0.2s;">
-                <h3 style="color: #06b6d4; font-size: 1.1rem; margin-bottom: 1rem;">Projeção de Curva de Ponto de Equilíbrio</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #06b6d4; font-size: 1.1rem; margin: 0;">Projeção de Curva de Ponto de Equilíbrio</h3>
+                    <button id="btn-run-ml" class="btn btn-primary" style="font-size: 0.85rem; padding: 6px 12px; background-color: #7c4dff; border-color: #7c4dff;">
+                        <i class="fas fa-brain"></i> Previsão Inteligente (ML)
+                    </button>
+                </div>
+                <div id="ml-info-badge" style="display: none; margin-bottom: 1rem; padding: 8px 12px; background: rgba(124, 77, 255, 0.1); border-left: 4px solid #7c4dff; border-radius: 4px; font-size: 0.85rem; color: #b0bec5;">
+                    <i class="fas fa-robot" style="color: #7c4dff; margin-right: 5px;"></i>
+                    <strong>Modelo:</strong> <span id="ml-algorithm-name" style="color: #fff;">—</span> &nbsp;|&nbsp; 
+                    <strong>Precisão (MAPE):</strong> <span id="ml-mape-score" style="color: #fff;">—</span> &nbsp;|&nbsp;
+                    <strong>Ajuste Aplicado:</strong> <span id="ml-correction-factor" style="color: #fff;">—</span>x
+                </div>
                 <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
                     <canvas id="simulatorChart"></canvas>
                 </div>
@@ -139,6 +150,7 @@ export async function initSimulatorPage() {
     document.getElementById('sim-product-select').addEventListener('change', handleProductSelection);
     document.getElementById('btn-reset').addEventListener('click', resetProductValues);
     document.getElementById('btn-save').addEventListener('click', saveProductValues);
+    document.getElementById('btn-run-ml').addEventListener('click', runMLForecast);
 
     await loadProducts();
     runSimulation();
@@ -365,9 +377,43 @@ async function runSimulation() {
 
     try {
         const result = await predictionsApi.simulate(params);
+        document.getElementById('ml-info-badge').style.display = 'none'; // Hide ML badge on manual simulation
         updateChartAndProfit(result);
     } catch (error) {
         console.error("Erro na simulação", error);
+    }
+}
+
+async function runMLForecast() {
+    const btn = document.getElementById('btn-run-ml');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    btn.disabled = true;
+
+    try {
+        const result = await predictionsApi.forecast({ horizon: 12 });
+        
+        // Exibir badge ML
+        const badge = document.getElementById('ml-info-badge');
+        badge.style.display = 'block';
+        document.getElementById('ml-algorithm-name').textContent = result.algorithmUsed || 'Desconhecido';
+        document.getElementById('ml-mape-score').textContent = result.mape ? result.mape.toFixed(1) + '%' : 'N/A';
+        document.getElementById('ml-correction-factor').textContent = result.correctionFactor ? result.correctionFactor.toFixed(2) : '1.00';
+
+        updateChartAndProfit(result);
+        showToast('Previsão ML gerada com sucesso!', 'success');
+    } catch (error) {
+        console.error("Erro na previsão ML:", error);
+        
+        // Lidar com falta de dados para ML (ex: erro 400 ou 422)
+        if (error.response && (error.response.status === 400 || error.response.status === 422)) {
+            showToast('Dados insuficientes. O modelo ML requer no mínimo 6 meses de histórico.', 'warning');
+        } else {
+            showToast('Erro ao gerar previsão inteligente.', 'error');
+        }
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
     }
 }
 

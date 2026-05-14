@@ -43,10 +43,11 @@ public class PredictionController {
      */
     @PostMapping("/simulate")
     public ResponseEntity<SimulationResponse> simulate(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody SimulationRequest request) {
         
-        SimulationResponse response = predictionEngineService.simulate(request);
+        SimulationResponse response = predictionEngineService.simulate(userId, request);
         return ResponseEntity.ok(response);
     }
 
