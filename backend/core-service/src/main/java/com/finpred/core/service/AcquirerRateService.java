@@ -36,6 +36,8 @@ public class AcquirerRateService {
                 .userId(userId)
                 .name(request.getName())
                 .creditRate(request.getCreditRate())
+                .creditRateInstallment2to6(request.getCreditRateInstallment2to6())
+                .creditRateInstallment7to12(request.getCreditRateInstallment7to12())
                 .debitRate(request.getDebitRate())
                 .pixRate(request.getPixRate())
                 .monthlyFee(request.getMonthlyFee())
@@ -55,6 +57,8 @@ public class AcquirerRateService {
 
         rate.setName(request.getName());
         rate.setCreditRate(request.getCreditRate());
+        rate.setCreditRateInstallment2to6(request.getCreditRateInstallment2to6());
+        rate.setCreditRateInstallment7to12(request.getCreditRateInstallment7to12());
         rate.setDebitRate(request.getDebitRate());
         rate.setPixRate(request.getPixRate());
         rate.setMonthlyFee(request.getMonthlyFee());

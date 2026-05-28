@@ -17,6 +17,8 @@ public class AcquirerRateResponse {
     private Long id;
     private String name;
     private BigDecimal creditRate;
+    private BigDecimal creditRateInstallment2to6;
+    private BigDecimal creditRateInstallment7to12;
     private BigDecimal debitRate;
     private BigDecimal pixRate;
     private BigDecimal monthlyFee;
@@ -27,6 +29,8 @@ public class AcquirerRateResponse {
                 .id(a.getId())
                 .name(a.getName())
                 .creditRate(a.getCreditRate())
+                .creditRateInstallment2to6(a.getCreditRateInstallment2to6())
+                .creditRateInstallment7to12(a.getCreditRateInstallment7to12())
                 .debitRate(a.getDebitRate())
                 .pixRate(a.getPixRate())
                 .monthlyFee(a.getMonthlyFee())

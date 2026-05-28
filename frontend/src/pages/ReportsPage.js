@@ -1,19 +1,28 @@
 import { renderSidebar } from '../components/Sidebar.js';
 import { reportsApi } from '../api/reports.js';
 import { showToast } from '../components/Toast.js';
+import { transactionsApi } from '../api/transactions.js';
 
 export function ReportsPage() {
     return `
         ${renderSidebar('/reports')}
         <main class="app-content" id="reports-page">
-            <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;">
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-4);flex-wrap:wrap;">
                 <div>
                     <h1>Relatórios <span class="accent">Financeiros</span></h1>
                     <p>DRE, Fluxo de Caixa Projetado e Análise de Impacto</p>
                 </div>
-                <button id="btn-export-pdf" class="btn btn-primary" style="font-size:0.85rem;padding:8px 16px;">
-                    <i class="fas fa-file-pdf"></i> Exportar PDF
-                </button>
+                <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+                    <select id="export-month-select" class="input select" style="width:auto;margin:0;font-size:0.85rem;padding:8px 12px;background:var(--card-bg);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-md);">
+                        <!-- preenchido via JS -->
+                    </select>
+                    <button id="btn-export-excel" class="btn btn-secondary" style="font-size:0.85rem;padding:8px 16px;white-space:nowrap;">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button id="btn-export-pdf" class="btn btn-primary" style="font-size:0.85rem;padding:8px 16px;white-space:nowrap;">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                </div>
             </div>
             <div class="report-tabs" id="report-tabs">
                 <button class="report-tab active" data-tab="dre"><i class="fas fa-file-invoice-dollar"></i> DRE</button>
@@ -30,6 +39,9 @@ export function ReportsPage() {
 let dreData = null, cashData = null, dreChart = null, cfChart = null, whatIfChart = null;
 
 export async function initReportsPage() {
+    // Popula o seletor de meses para a exportação
+    populateMonthSelect();
+
     document.querySelectorAll('.report-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
@@ -38,6 +50,7 @@ export async function initReportsPage() {
         });
     });
     document.getElementById('btn-export-pdf')?.addEventListener('click', exportPDF);
+    document.getElementById('btn-export-excel')?.addEventListener('click', exportExcel);
     await renderTab('dre');
 }
 
@@ -357,6 +370,187 @@ async function exportPDF() {
         showToast('Erro ao gerar PDF.', 'error');
     } finally {
         btn.innerHTML = '<i class="fas fa-file-pdf"></i> Exportar PDF';
+        btn.disabled = false;
+    }
+}
+
+function populateMonthSelect() {
+    const monthSelect = document.getElementById('export-month-select');
+    if (!monthSelect) return;
+    monthSelect.innerHTML = '';
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+        const labelCap = label.charAt(0).toUpperCase() + label.slice(1);
+        monthSelect.innerHTML += `<option value="${val}">${labelCap}</option>`;
+    }
+}
+
+async function exportExcel() {
+    const btn = document.getElementById('btn-export-excel');
+    if (!btn) return;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+    btn.disabled = true;
+
+    try {
+        const XLSX = await import('xlsx');
+        const selectedMonth = document.getElementById('export-month-select').value;
+        const [year, month] = selectedMonth.split('-').map(Number);
+
+        // Date range of the 12 most recent months ending at selectedMonth
+        const startDate = new Date(year, month - 1 - 11, 1);
+        const endDate = new Date(year, month, 0); // Last day of selectedMonth
+
+        const formatDate = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        const startStr = formatDate(startDate);
+        const endStr = formatDate(endDate);
+
+        // Fetch transactions for the date range
+        const transactions = await transactionsApi.getByDateRange(startStr, endStr);
+
+        // Create the 12 months array (sorted chronologically)
+        const monthsList = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(year, month - 1 - i, 1);
+            monthsList.push({
+                key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+                label: d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()),
+                entradas: 0,
+                saidas: 0,
+                saldo: 0,
+                acumulado: 0
+            });
+        }
+
+        const isIncome = (type) => type === 'REVENUE' || type === 'OTHER_REVENUE';
+
+        // Group transactions by month
+        transactions.forEach(t => {
+            if (!t.date) return;
+            const parts = t.date.split('-');
+            if (parts.length < 2) return;
+            const tYear = parseInt(parts[0], 10);
+            const tMonth = parseInt(parts[1], 10);
+            const key = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+            
+            const mObj = monthsList.find(m => m.key === key);
+            if (mObj) {
+                const amount = parseFloat(t.amount) || 0;
+                if (isIncome(t.type)) {
+                    mObj.entradas += amount;
+                } else {
+                    mObj.saidas += amount;
+                }
+            }
+        });
+
+        // Compute balances
+        let runningAccumulated = 0;
+        monthsList.forEach(m => {
+            m.saldo = m.entradas - m.saidas;
+            runningAccumulated += m.saldo;
+            m.acumulado = runningAccumulated;
+        });
+
+        // Map Sheet 1: Visão 12 Meses
+        const sheet1Data = monthsList.map(m => ({
+            'Mês': m.label,
+            'Entradas (R$)': m.entradas,
+            'Saídas (R$)': m.saidas,
+            'Saldo Mensal (R$)': m.saldo,
+            'Saldo Acumulado (R$)': m.acumulado
+        }));
+
+        // Map Sheet 2: Detalhado - [Mês]
+        const selectedMonthKey = selectedMonth;
+        const selectedMonthTxns = transactions.filter(t => {
+            if (!t.date) return false;
+            const parts = t.date.split('-');
+            if (parts.length < 2) return false;
+            const tYear = parseInt(parts[0], 10);
+            const tMonth = parseInt(parts[1], 10);
+            const key = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+            return key === selectedMonthKey;
+        });
+
+        // Sort selected month transactions by date asc
+        selectedMonthTxns.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const getTypeLabel = (type) => {
+            switch (type) {
+                case 'REVENUE': return 'Receita';
+                case 'FIXED_COST': return 'Custo Fixo';
+                case 'VARIABLE_COST': return 'Custo Variável';
+                case 'TAX': return 'Imposto';
+                case 'DEPRECIATION': return 'Depreciação';
+                case 'FINANCIAL_EXPENSE': return 'Despesa Financeira';
+                case 'OTHER_REVENUE': return 'Outra Receita';
+                case 'OTHER_EXPENSE': return 'Outra Despesa';
+                default: return type;
+            }
+        };
+
+        const formatDateBR = (dateStr) => {
+            if (!dateStr) return '—';
+            const parts = dateStr.split('-');
+            if (parts.length < 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        };
+
+        const sheet2Data = selectedMonthTxns.map(t => ({
+            'Data': formatDateBR(t.date),
+            'Tipo': getTypeLabel(t.type),
+            'Descrição': t.description,
+            'Categoria': t.category || '—',
+            'Valor (R$)': parseFloat(t.amount) || 0
+        }));
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
+        const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
+
+        // Adjust column widths helper
+        const fitToColumn = (data) => {
+            if (!data || data.length === 0) return [];
+            const keys = Object.keys(data[0]);
+            return keys.map(key => {
+                let maxLen = key.length;
+                data.forEach(row => {
+                    const val = row[key] != null ? row[key].toString() : '';
+                    if (val.length > maxLen) maxLen = val.length;
+                });
+                return { wch: maxLen + 3 };
+            });
+        };
+
+        ws1['!cols'] = fitToColumn(sheet1Data);
+        ws2['!cols'] = fitToColumn(sheet2Data);
+
+        XLSX.utils.book_append_sheet(wb, ws1, 'Visão 12 Meses');
+        
+        // Find the label for the selected month
+        const selMonthObj = monthsList.find(m => m.key === selectedMonthKey);
+        const selMonthLabel = selMonthObj ? selMonthObj.label : selectedMonthKey;
+        const sheet2Name = `Detalhado - ${selMonthLabel.substring(0, 18)}`;
+        XLSX.utils.book_append_sheet(wb, ws2, sheet2Name);
+
+        XLSX.writeFile(wb, `finpred-relatorio-${selectedMonth}.xlsx`);
+        showToast('Planilha Excel exportada com sucesso!', 'success');
+    } catch (e) {
+        console.error('Erro ao exportar Excel:', e);
+        showToast('Erro ao exportar planilha.', 'error');
+    } finally {
+        btn.innerHTML = originalHtml;
         btn.disabled = false;
     }
 }

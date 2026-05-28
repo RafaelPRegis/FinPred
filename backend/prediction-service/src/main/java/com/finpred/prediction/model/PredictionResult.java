@@ -27,7 +27,7 @@ public class PredictionResult {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false)
+    @Column(name = "prediction_month", nullable = false)
     private LocalDate month;
 
     @Column(nullable = false, precision = 14, scale = 2)

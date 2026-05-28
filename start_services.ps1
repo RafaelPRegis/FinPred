@@ -18,8 +18,9 @@ Write-Host "  FinPred - Iniciando Servicos" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Set JAVA_HOME explicitly
+# Set JAVA_HOME explicitly and update PATH for Java and Node
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-26"
+$env:PATH = "$env:JAVA_HOME\bin;C:\Program Files\nodejs;$env:PATH"
 
 # Verificar Java
 try {

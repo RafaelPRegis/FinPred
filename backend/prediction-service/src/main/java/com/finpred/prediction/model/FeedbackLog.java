@@ -37,7 +37,7 @@ public class FeedbackLog {
     private Long predictionId;
 
     /** Mês/ano referente ao feedback (ex: 2026-01-01 para Janeiro/2026) */
-    @Column(nullable = false)
+    @Column(name = "feedback_month", nullable = false)
     private LocalDate month;
 
     /** Valor real observado no período */

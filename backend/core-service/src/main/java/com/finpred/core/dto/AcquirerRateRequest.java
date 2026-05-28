@@ -19,6 +19,8 @@ public class AcquirerRateRequest {
     private String name;
 
     private BigDecimal creditRate;
+    private BigDecimal creditRateInstallment2to6;
+    private BigDecimal creditRateInstallment7to12;
     private BigDecimal debitRate;
     private BigDecimal pixRate;
     private BigDecimal monthlyFee;

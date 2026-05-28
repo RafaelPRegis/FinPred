@@ -31,6 +31,12 @@ public class AcquirerRate {
     private BigDecimal creditRate;
 
     @Column(precision = 5, scale = 2)
+    private BigDecimal creditRateInstallment2to6;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal creditRateInstallment7to12;
+
+    @Column(precision = 5, scale = 2)
     private BigDecimal debitRate;
 
     @Column(precision = 5, scale = 2)

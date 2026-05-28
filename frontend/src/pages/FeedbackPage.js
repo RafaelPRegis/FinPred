@@ -13,7 +13,7 @@ import { showToast } from '../components/Toast.js';
 export function FeedbackPage() {
     return `
         ${renderSidebar('/feedback')}
-        <main class="main-content" id="feedback-page">
+        <main class="app-content" id="feedback-page">
             <header class="page-header">
                 <div class="page-header-text">
                     <h1>Feedback <span class="accent">Preditivo</span></h1>

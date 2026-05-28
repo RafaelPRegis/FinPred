@@ -23,13 +23,37 @@ export function AcquirersPage() {
                     </div>
                 </div>
                 <div class="input-group">
-                    <label for="acq-credit">Taxa de Crédito (%)</label>
+                    <label for="acq-credit">Taxa de Crédito à Vista (%)</label>
                     <div class="input-icon">
                         <i class="fas fa-percent"></i>
                         <input type="number" id="acq-credit" class="input" step="0.01" min="0" placeholder="4.99" required />
                     </div>
                 </div>
             </div>
+
+            <!-- Parcelado Section -->
+            <div style="background: var(--bg-tertiary); padding: var(--space-4); border-radius: 8px; margin-bottom: var(--space-4);">
+                <h4 style="margin-bottom: var(--space-3); color: var(--accent-primary); font-size: 0.9rem;">
+                    <i class="fas fa-layer-group"></i> Taxas de Crédito Parcelado
+                </h4>
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="acq-credit-2to6">Parcelado 2x a 6x (%)</label>
+                        <div class="input-icon">
+                            <i class="fas fa-percent"></i>
+                            <input type="number" id="acq-credit-2to6" class="input" step="0.01" min="0" placeholder="5.49" />
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="acq-credit-7to12">Parcelado 7x a 12x (%)</label>
+                        <div class="input-icon">
+                            <i class="fas fa-percent"></i>
+                            <input type="number" id="acq-credit-7to12" class="input" step="0.01" min="0" placeholder="6.99" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="input-group">
                     <label for="acq-pix">Taxa Pix (%)</label>
@@ -101,7 +125,9 @@ export function AcquirersPage() {
                         <div class="input-icon">
                             <i class="fas fa-credit-card"></i>
                             <select id="comp-type" class="input">
-                                <option value="credit">Crédito</option>
+                                <option value="credit">Crédito à Vista</option>
+                                <option value="credit_2to6">Crédito Parcelado (2x a 6x)</option>
+                                <option value="credit_7to12">Crédito Parcelado (7x a 12x)</option>
                                 <option value="debit">Débito</option>
                                 <option value="pix">Pix</option>
                             </select>
@@ -156,11 +182,19 @@ async function loadAcquirers() {
             return;
         }
 
-        const rows = acquirersData.map(a => `
+        const rows = acquirersData.map(a => {
+            const inst2to6 = a.creditRateInstallment2to6 != null ? a.creditRateInstallment2to6.toFixed(2) : '—';
+            const inst7to12 = a.creditRateInstallment7to12 != null ? a.creditRateInstallment7to12.toFixed(2) : '—';
+            return `
             <tr>
                 <td><strong>${a.name}</strong></td>
                 <td><span class="badge badge-info">${a.debitRate.toFixed(2)}%</span></td>
-                <td><span class="badge badge-warning">${a.creditRate.toFixed(2)}%</span></td>
+                <td>
+                    <span class="badge badge-warning">${a.creditRate.toFixed(2)}%</span>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
+                        2-6x: ${inst2to6}% · 7-12x: ${inst7to12}%
+                    </div>
+                </td>
                 <td><span class="badge badge-success">${a.pixRate.toFixed(2)}%</span></td>
                 <td class="money">${formatCurrency(a.monthlyFee)}</td>
                 <td>
@@ -174,7 +208,7 @@ async function loadAcquirers() {
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
 
         container.innerHTML = `
             <div class="table-wrapper">
@@ -206,12 +240,22 @@ async function saveAcquirer() {
     const pixRate = parseFloat(document.getElementById('acq-pix').value);
     const monthlyFee = parseFloat(document.getElementById('acq-fee').value);
 
+    // Parcelado fields (optional)
+    const credit2to6Input = document.getElementById('acq-credit-2to6').value;
+    const credit7to12Input = document.getElementById('acq-credit-7to12').value;
+    const creditRateInstallment2to6 = credit2to6Input ? parseFloat(credit2to6Input) : null;
+    const creditRateInstallment7to12 = credit7to12Input ? parseFloat(credit7to12Input) : null;
+
     if (!name || isNaN(debitRate) || isNaN(creditRate) || isNaN(pixRate) || isNaN(monthlyFee)) {
-        showToast('Preencha todos os campos corretamente.', 'error');
+        showToast('Preencha todos os campos obrigatórios corretamente.', 'error');
         return;
     }
 
-    const data = { name, debitRate, creditRate, pixRate, monthlyFee, active: true };
+    const data = {
+        name, debitRate, creditRate, pixRate, monthlyFee, active: true,
+        creditRateInstallment2to6,
+        creditRateInstallment7to12
+    };
 
     try {
         if (id) {
@@ -238,6 +282,8 @@ window.editAcquirer = function(id) {
     document.getElementById('acq-credit').value = a.creditRate;
     document.getElementById('acq-pix').value = a.pixRate;
     document.getElementById('acq-fee').value = a.monthlyFee;
+    document.getElementById('acq-credit-2to6').value = a.creditRateInstallment2to6 ?? '';
+    document.getElementById('acq-credit-7to12').value = a.creditRateInstallment7to12 ?? '';
     openModal('acquirer-modal');
 }
 
@@ -265,14 +311,28 @@ function runComparison() {
     // Calcula líquido para cada uma
     const results = acquirersData.map(a => {
         let rate = 0;
-        if (type === 'credit') rate = a.creditRate;
-        else if (type === 'debit') rate = a.debitRate;
-        else if (type === 'pix') rate = a.pixRate;
+        let rateLabel = '';
+        if (type === 'credit') {
+            rate = a.creditRate;
+            rateLabel = 'Crédito à Vista';
+        } else if (type === 'credit_2to6') {
+            rate = a.creditRateInstallment2to6 ?? a.creditRate;
+            rateLabel = 'Parcelado 2-6x';
+        } else if (type === 'credit_7to12') {
+            rate = a.creditRateInstallment7to12 ?? a.creditRate;
+            rateLabel = 'Parcelado 7-12x';
+        } else if (type === 'debit') {
+            rate = a.debitRate;
+            rateLabel = 'Débito';
+        } else if (type === 'pix') {
+            rate = a.pixRate;
+            rateLabel = 'Pix';
+        }
 
         const feeAmount = amount * (rate / 100);
         const netAmount = amount - feeAmount;
 
-        return { ...a, rate, feeAmount, netAmount };
+        return { ...a, rate, rateLabel, feeAmount, netAmount };
     });
 
     // Ordena do maior valor líquido para o menor
@@ -293,7 +353,7 @@ function runComparison() {
                     <strong style="color: ${isWinner ? 'var(--accent-secondary)' : 'var(--text-primary)'}">
                         ${isWinner ? '<i class="fas fa-trophy"></i> ' : ''}${r.name}
                     </strong>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary)">Taxa: ${r.rate.toFixed(2)}%</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary)">Taxa: ${r.rate.toFixed(2)}% (${r.rateLabel})</div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-weight: 600; color: ${isWinner ? 'var(--accent-secondary)' : 'var(--text-primary)'}">
