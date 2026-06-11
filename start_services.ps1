@@ -18,9 +18,30 @@ Write-Host "  FinPred - Iniciando Servicos" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Set JAVA_HOME explicitly and update PATH for Java and Node
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-26"
-$env:PATH = "$env:JAVA_HOME\bin;C:\Program Files\nodejs;$env:PATH"
+# Set JAVA_HOME and PATH dynamically for Java and Node.js
+if (-not $env:JAVA_HOME) {
+    $defaultJdk = "C:\Program Files\Java\jdk-26"
+    if (Test-Path $defaultJdk) {
+        $env:JAVA_HOME = $defaultJdk
+    } else {
+        $jdkDirs = Get-ChildItem -Path "C:\Program Files\Java" -Filter "jdk-*" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending
+        if ($jdkDirs) {
+            $env:JAVA_HOME = $jdkDirs[0].FullName
+            Write-Host "Configurando JAVA_HOME para $($env:JAVA_HOME) automaticamente." -ForegroundColor Yellow
+        }
+    }
+}
+
+if ($env:JAVA_HOME -and (Test-Path $env:JAVA_HOME)) {
+    $env:PATH = "$(Join-Path $env:JAVA_HOME 'bin');$env:PATH"
+}
+
+# Só adiciona o caminho padrão do Node no PATH se o comando 'node' não for encontrado e a pasta existir
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    if (Test-Path "C:\Program Files\nodejs") {
+        $env:PATH = "C:\Program Files\nodejs;$env:PATH"
+    }
+}
 
 # Verificar Java
 try {
@@ -82,6 +103,12 @@ $frontendJob = Start-Process -FilePath "npm.cmd" `
     -WindowStyle Normal
 
 $jobs += @{ Name = "Frontend"; Process = $frontendJob; Port = 5173 }
+
+# Abrir o navegador com a URL limpa (sem barra invertida)
+Write-Host ""
+Write-Host "  Abrindo o navegador em http://localhost:5173/ ..." -ForegroundColor Cyan
+Start-Sleep -Seconds 2
+Start-Process "http://localhost:5173/"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green

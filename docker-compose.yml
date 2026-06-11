@@ -38,6 +38,102 @@ services:
       timeout: 5s
       retries: 5
 
+  auth-service:
+    build:
+      context: ./backend/auth-service
+    container_name: finpred-auth-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: finpred_db
+      MYSQL_USER: finpred
+      MYSQL_PASSWORD: finpred_secret
+      JWT_SECRET: ${JWT_SECRET:-finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-427699906241-mmm6nsl6ggudgfdrgkbncbv00hnkgrie.apps.googleusercontent.com}
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  core-service:
+    build:
+      context: ./backend/core-service
+    container_name: finpred-core-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: finpred_db
+      MYSQL_USER: finpred
+      MYSQL_PASSWORD: finpred_secret
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      JWT_SECRET: ${JWT_SECRET:-finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  prediction-service:
+    build:
+      context: ./backend/prediction-service
+    container_name: finpred-prediction-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: finpred_db
+      MYSQL_USER: finpred
+      MYSQL_PASSWORD: finpred_secret
+      FINPRED_CORE_SERVICE_URL: http://core-service:8082
+      JWT_SECRET: ${JWT_SECRET:-finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      core-service:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    container_name: finpred-api-gateway
+    restart: unless-stopped
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      CORE_SERVICE_URL: http://core-service:8082
+      PREDICTION_SERVICE_URL: http://prediction-service:8083
+      JWT_SECRET: ${JWT_SECRET:-finpred-dev-secret-key-change-in-production-must-be-256-bits-long}
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-service:
+        condition: service_started
+      core-service:
+        condition: service_started
+      prediction-service:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: finpred-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
 volumes:
   mysql_data:
   rabbitmq_data:

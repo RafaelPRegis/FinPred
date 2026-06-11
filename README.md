@@ -1,19 +1,26 @@
 # FinPred — Sistema de Predição Financeira Distribuído
 
-Contem 4 microsserviços
-- API Gateway
-- Auth Service
-- Core Service
-- Prediction Service
+O FinPred é uma aplicação web voltada para gestão financeira e apoio à tomada de decisão em pequenos negócios. A proposta do sistema é reunir controle de produtos, transações, fluxo de caixa, dashboard, alertas, simulação tributária, taxas de adquirentes e previsão de cenários financeiros em uma única plataforma. 
 
-Conexão API do Back ao Front
+## Arquiterura
 
-Infraestrutura
-- Java 21+
-- Node.js 20+
-- Docker Compose para subir todos os serviços
-- Maven Wrapper para cada serviço
-- .env.example para variáveis de ambiente
+O frontend acessa o backend por meio da rota base /api. O API Gateway expõe a porta 8080, aplica regras de CORS, valida JWT nas rotas protegidas e redireciona as chamadas para Auth Service, Core Service ou Prediction Service.
 
-Arquivos para subir o projeto de forma simples: 
-- start_services.ps1 para subir todos os serviços
+## Estrutura de diretorios
+
+
+## Tecnologias usadas
+
+### Backend
+- Java 21
+- Spring Boot 3.2.0
+- Maven Wrapper
+
+### Frontend
+- React 18
+- Vite
+
+### Infraestrutura
+- Docker Compose
+- MySQL
+- RabbitMQ
